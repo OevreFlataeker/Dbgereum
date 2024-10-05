@@ -92,6 +92,7 @@ _table = {#opcode: (name, immediate_operand_size, pops, pushes, gas, description
                 0x59: ('MSIZE', 0, 0, 1, 2, 'Get the size of active memory in bytes.'),
                 0x5a: ('GAS', 0, 0, 1, 2, 'Get the amount of available gas, including the corresponding reduction the amount of available gas.'),
                 0x5b: ('JUMPDEST', 0, 0, 0, 1, 'Mark a valid destination for jumps.'),
+                0x5f: ('PUSH', 0, 0, 1, 0, 'Place 1 byte item on stack.'),
                 0x60: ('PUSH', 1, 0, 1, 0, 'Place 1 byte item on stack.'),
                 0x61: ('PUSH', 2, 0, 1, 0, 'Place 2-byte item on stack.'),
                 0x62: ('PUSH', 3, 0, 1, 0, 'Place 3-byte item on stack.'),
@@ -1157,11 +1158,13 @@ class GUI:
                     check = 0
 
                     # It needs just for beautiful value representation O__o
-                    for k in range(0, operand_size):
-                        check += int(self.Dbgereum.bytecode[i + k + 1])
-                        if check != 0 or operand_size == 1:
-                            parameter += ''.join('{:02x}'.format(self.Dbgereum.bytecode[i + k + 1]))
-
+                    if operand_size != 0:
+                        for k in range(0, operand_size):
+                            check += int(self.Dbgereum.bytecode[i + k + 1])
+                            if check != 0 or operand_size == 1:
+                                parameter += ''.join('{:02x}'.format(self.Dbgereum.bytecode[i + k + 1]))
+                    else:
+                        parameter += "00"
                     if self.Dbgereum.opcodes:
                         text.insert(INSERT, f"{breakp:<6}" + f"{hex(i):<12}" + f"{hex(self.Dbgereum.bytecode[i])[2:]:<6}" + f"{instruction + str(operand_size):<18}" + f"{'0x' + parameter:<72}" + comment + "\n")
                     else:
@@ -1357,7 +1360,10 @@ class Dbgereum:
 
                 if instruction == "PUSH":
                     operand_size = _table[byte][1]
-                    i += operand_size
+                    if operand_size == -1:
+                        i = 0
+                    else:
+                        i += operand_size
                 if instruction == "JUMP" or instruction == "JUMPI" or instruction == "REVERT" or instruction == "STOP":
                     line += 1
             except:
@@ -1376,7 +1382,10 @@ class Dbgereum:
 
                 if instruction == "PUSH":
                     operand_size = _table[byte][1]
-                    self.last_instruction += operand_size
+                    if operand_size == 0:
+                        self.last_instruction += 0
+                    else:
+                        self.last_instruction += operand_size
             except:
                 nothing = 0
             self.last_instruction += 1
@@ -1639,10 +1648,15 @@ class Dbgereum:
         elif _table[command][0] == "PUSH":
             size = _table[command][1]
             parameter = ""
-            for i in range(0, size):
-                parameter += '{:02x}'.format(self.bytecode[index + i + 1])
-            self.stack.append(parameter)
-            self.ip += size + 1
+            if size == 0:
+                parameter += '00'
+                self.stack.append(parameter)
+                self.ip += 1
+            else:
+                for i in range(0, size):
+                    parameter += '{:02x}'.format(self.bytecode[index + i + 1])
+                self.stack.append(parameter)
+                self.ip += size + 1
 
         #POP
         elif command == 0x50:
